@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "500815938879",
+    "firebase_url": "https://uywa-app-6192a-default-rtdb.firebaseio.com",
+    "project_id": "uywa-app-6192a",
+    "storage_bucket": "uywa-app-6192a.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:500815938879:android:61169563b7a0d743443f8a",
+        "android_client_info": {
+          "package_name": "com.uywa.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "500815938879-se4lt3jb9qiv91me4fee823tel65matv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBfn8whE0fS4WUKqsrTYQtHT6ylfxSE04o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "500815938879-af1pveu50t1ovrfjsud5n7l8ptd01jsc.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "500815938879-4ii179o690g6klsin09kedm96iv59fpj.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.uywa.app",
+                "app_store_id": "6444038106"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
