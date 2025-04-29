@@ -10,7 +10,8 @@ import 'package:dropdown_search/dropdown_search.dart'; // Import dropdown_search
 import 'package:uywapets_flutter/src/features/master/domain/models/country.dart'; // Importar modelo Country
 import 'package:uywapets_flutter/src/features/master/domain/models/state.dart'; // Importar modelo State
 import 'package:uywapets_flutter/src/shared/widgets/country_dropdown.dart'; // Importar componente CountryDropdown
-import 'package:uywapets_flutter/src/shared/widgets/state_dropdown.dart'; // Importar componente StateDropdown
+import 'package:uywapets_flutter/src/shared/widgets/state_dropdown.dart';
+import 'package:uywapets_flutter/src/theme/app_colors.dart'; // Importar componente StateDropdown
 
 // TODO: Import necessary providers (AuthService, MasterService, etc.)
 // import 'package:uywapets_flutter/src/features/auth/data/providers/auth_providers.dart'; // Example path
@@ -84,6 +85,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> { // Change to 
   // General Loading State
   bool _isLoading = false; // For general loading like step 1 registration
   String? _userId; // To store user ID after step 1 registration
+
+  // Variables para controlar el tipo de verificación seleccionado
+  String? _selectedVerificationType; // 'sms' o 'email'
 
   // TODO: Remove dummy data once providers are integrated
   // final List<Map<String, String>> _countries = [
@@ -426,19 +430,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> { // Change to 
      }
 
      void _goToPreviousStep() {
-        // Clear OTP field when going back from step 3 or 4
-        if (_step == 3 || _step == 4) {
-           _otpController.clear();
-        }
-        // Clear phone fields when going back from step 3
+        // Clear OTP field when going back from step 3
         if (_step == 3) {
-           _phoneNumberController.clear();
-           // Optionally reset prefix if needed: _phonePrefixController.text = '51';
+           _otpController.clear();
+           // Si estamos en verificación por SMS, limpiamos los campos de teléfono
+           if (_selectedVerificationType == 'sms') {
+             _phoneNumberController.clear();
+           }
         }
 
         if (_step > 1) {
           setState(() {
             _step--;
+            // Si volvemos al paso 2, limpiamos el tipo de verificación seleccionado
+            if (_step == 2) {
+              _selectedVerificationType = null;
+            }
           });
         } else {
           // Navigate back from step 1
@@ -446,7 +453,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> { // Change to 
              context.pop();
           } else {
              // Fallback or specific navigation if cannot pop (e.g., deep link)
-             // TODO: Confirm the correct route to navigate back to (e.g., PreLoginScreen.route)
              context.go('/prelogin'); // Navigate to prelogin as a fallback
           }
         }
@@ -476,7 +482,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> { // Change to 
           icon: const Icon(Icons.arrow_back_ios), // Consistent back icon
           onPressed: _goToPreviousStep,
         ),
-         title: Text('Registro - Paso $_step'), // Dynamic title
+         title: Text('Crear Cuenta - Paso $_step'), // Dynamic title
        ),
        // Usar SingleChildScrollView para evitar desbordamientos
        body: Padding( // Added padding around the Column
@@ -501,7 +507,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> { // Change to 
 
   // Builds the visual progress indicator
   Widget _buildProgressIndicator() {
-    const totalSteps = 4; // Total number of steps
+    const totalSteps = 3; // Actualizado a 3 pasos en total
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
       child: Row(
@@ -515,7 +521,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> { // Change to 
               : isActive
                   ? Theme.of(context).primaryColor.withOpacity(0.8)
                   : Colors.grey.shade300;
-          Color textColor = isCompleted || isActive ? Colors.white : Colors.black54;
+          Color textColor = isCompleted || isActive ? AppColors.surface : AppColors.primaryBlue.withOpacity(0.6);
 
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -551,9 +557,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> { // Change to 
       case 2:
         return _buildStep2VerificationOptions();
       case 3:
-        return _buildStep3SmsOtp();
-      case 4:
-        return _buildStep4EmailOtp();
+        return _buildStep3Verification();
       default:
         return Center(child: Text('Paso $_step no implementado'));
      }
@@ -565,7 +569,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> { // Change to 
      return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Crear Cuenta', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        const Text('Datos Usuario', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         const Text('Completa los siguientes campos para crear tu cuenta y explorar con GO PETS!'),
         const SizedBox(height: 24),
@@ -775,6 +779,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> { // Change to 
            trailing: const Icon(Icons.chevron_right),
            onTap: () {
              setState(() {
+               _selectedVerificationType = 'sms';
                _step = 3; // Go to SMS step
              });
            },
@@ -786,7 +791,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> { // Change to 
            trailing: const Icon(Icons.chevron_right),
            onTap: () {
              setState(() {
-               _step = 4; // Go to Email step
+               _selectedVerificationType = 'email';
+               _step = 3; // Go to Email step
              });
            },
          ),
@@ -794,201 +800,218 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> { // Change to 
      );
   }
 
-  // Builds the UI for Step 3: SMS OTP Verification
-  Widget _buildStep3SmsOtp() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text('Verificación por SMS', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        const Text('Se enviará un código de seguridad de 4 dígitos por SMS al teléfono que ingreses para verificar tu cuenta.'),
-        const SizedBox(height: 24),
+  // Método combinado para el paso 3 que maneja ambos tipos de verificación
+  Widget _buildStep3Verification() {
+    // Mostrar contenido según el tipo de verificación seleccionado
+    if (_selectedVerificationType == 'sms') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Verificación por SMS', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          const Text('Se enviará un código de seguridad de 4 dígitos por SMS al teléfono que ingreses para verificar tu cuenta.'),
+          const SizedBox(height: 24),
 
-        // Phone Number Input Row
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start, // Align items to top for validation messages
-          children: [
-            // Prefix
-            SizedBox(
-              width: 80, // Adjust width as needed
-              child: TextFormField(
-                controller: _phonePrefixController,
-                keyboardType: TextInputType.phone,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(
-                  labelText: 'Prefijo',
-                  // TODO: Add country flag based on prefix?
+          // Phone Number Input Row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start, // Align items to top for validation messages
+            children: [
+              // Prefix
+              SizedBox(
+                width: 80, // Adjust width as needed
+                child: TextFormField(
+                  controller: _phonePrefixController,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(
+                    labelText: 'Prefijo',
+                    // TODO: Add country flag based on prefix?
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Req.';
+                    if (value.length < 2) return 'Inv.';
+                    return null;
+                  },
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Req.';
-                  if (value.length < 2) return 'Inv.';
-                  return null;
-                },
               ),
-            ),
-            const SizedBox(width: 8),
-            // Phone Number
-            Expanded(
-              child: TextFormField(
-                controller: _phoneNumberController,
-                keyboardType: TextInputType.phone,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                maxLength: 9, // Match Ionic input
-                decoration: const InputDecoration(
-                  labelText: 'Teléfono',
-                  counterText: "", // Hide the default counter
+              const SizedBox(width: 8),
+              // Phone Number
+              Expanded(
+                child: TextFormField(
+                  controller: _phoneNumberController,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  maxLength: 9, // Match Ionic input
+                  decoration: const InputDecoration(
+                    labelText: 'Teléfono',
+                    counterText: "", // Hide the default counter
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Ingresa tu teléfono';
+                    }
+                    if (value.length != 9) {
+                      return 'Debe tener 9 dígitos';
+                    }
+                    return null;
+                  },
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Ingresa tu teléfono';
-                  }
-                  if (value.length != 9) {
-                    return 'Debe tener 9 dígitos';
-                  }
-                  return null;
-                },
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
+            ],
+          ),
+          const SizedBox(height: 24),
 
-        // Send SMS Button
-        ElevatedButton(
-          onPressed: _isSendingSms ? null : _sendSmsOtp, // Disable while sending/waiting
-          child: _isSendingSms
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                    const SizedBox(width: 16),
-                    Text('Esperar (${_smsResendTimerSeconds}s)'),
-                  ],
-                )
-              : const Text('Enviar SMS'),
-        ),
-        const SizedBox(height: 32),
+          // Send SMS Button
+          ElevatedButton(
+            onPressed: _isSendingSms ? null : _sendSmsOtp, // Disable while sending/waiting
+            child: _isSendingSms
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                      const SizedBox(width: 16),
+                      Text('Esperar (${_smsResendTimerSeconds}s)'),
+                    ],
+                  )
+                : const Text('Enviar SMS'),
+          ),
+          const SizedBox(height: 32),
 
-        // --- OTP Input Section ---
-        const Text('Verifica tu Teléfono', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-         const SizedBox(height: 8),
-         const Text('Ingrese el código de seguridad de 4 dígitos que acabamos de enviar a tu teléfono.'),
+          // --- OTP Input Section ---
+          const Text('Verifica tu Teléfono', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          const Text('Ingrese el código de seguridad de 4 dígitos que acabamos de enviar a tu teléfono.'),
           const SizedBox(height: 16),
 
-         // Use flutter_otp_text_field
-         OtpTextField(
-           numberOfFields: 4,
-           borderColor: Theme.of(context).primaryColor,
-           // styles: [TextStyle(fontSize: 24)], // Optional: Apply specific style
-           showFieldAsBox: true, // Use boxes
-           fieldWidth: 50, // Adjust width as needed
-           //runs when every textfield is filled
-           onSubmit: (String verificationCode){
-               _otpController.text = verificationCode; // Update the controller
-               // Optionally trigger verification immediately, or rely on the button
-               // _verifySmsOtp();
-           }, // end onSubmit
-         ),
-         const SizedBox(height: 24),
+          // Use flutter_otp_text_field
+          OtpTextField(
+            numberOfFields: 4,
+            borderColor: Theme.of(context).primaryColor,
+            showFieldAsBox: true, // Use boxes
+            fieldWidth: 50, // Adjust width as needed
+            onSubmit: (String verificationCode){
+                _otpController.text = verificationCode; // Update the controller
+            },
+          ),
+          const SizedBox(height: 24),
 
           // Verify Button
-         ElevatedButton(
-           // Enable only after SMS has been sent and not currently verifying
-           onPressed: (_canResendSms || _isSendingSms || _isVerifyingSmsOtp) ? null : _verifySmsOtp,
-           style: ElevatedButton.styleFrom(
+          ElevatedButton(
+            onPressed: (_canResendSms || _isSendingSms || _isVerifyingSmsOtp) ? null : _verifySmsOtp,
+            style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
               textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-           child: _isVerifyingSmsOtp
-               ? const SizedBox(
-                   height: 24, width: 24,
-                   child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)
-                 )
-               : const Text('Verificar'),
-         ),
-       ],
-    );
-  }
+            child: _isVerifyingSmsOtp
+                ? const SizedBox(
+                    height: 24, width: 24,
+                    child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)
+                  )
+                : const Text('Verificar'),
+          ),
+          
+          // Opción para cambiar de método
+          const SizedBox(height: 24),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _selectedVerificationType = 'email';
+                // Limpiar campos de SMS
+                _otpController.clear();
+              });
+            },
+            child: const Text('Cambiar a verificación por correo'),
+          ),
+        ],
+      );
+    } else {
+      // Verificación por correo
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Verificación por Correo', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          const Text('Se enviará un código de seguridad de 4 dígitos al email que registraste para verificar tu cuenta.'),
+          const SizedBox(height: 24),
 
-  // Builds the UI for Step 4: Email OTP Verification
-  Widget _buildStep4EmailOtp() {
-     return Column(
-       crossAxisAlignment: CrossAxisAlignment.stretch,
-       children: [
-         const Text('Verificación por Correo', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-         const SizedBox(height: 8),
-         const Text('Se enviará un código de seguridad de 4 dígitos al email que registraste para verificar tu cuenta.'),
-         const SizedBox(height: 24),
+          // Display Registered Email (Read-only)
+          TextFormField(
+            controller: _emailController, // Use controller from step 1
+            readOnly: true,
+            decoration: const InputDecoration(
+              labelText: 'Correo Registrado',
+              prefixIcon: Icon(Icons.email_outlined),
+              border: InputBorder.none, // Make it look like text
+              filled: false, // No background fill
+            ),
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 16),
+          ),
+          const SizedBox(height: 24),
 
-         // Display Registered Email (Read-only)
-         TextFormField(
-           controller: _emailController, // Use controller from step 1
-           readOnly: true,
-           decoration: const InputDecoration(
-             labelText: 'Correo Registrado',
-             prefixIcon: Icon(Icons.email_outlined),
-             border: InputBorder.none, // Make it look like text
-             filled: false, // No background fill
-           ),
-           style: TextStyle(color: Colors.grey.shade700, fontSize: 16),
-         ),
-         const SizedBox(height: 24),
+          // Send Email Button
+          ElevatedButton(
+            onPressed: _isSendingEmail ? null : _sendEmailOtp,
+            child: _isSendingEmail
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                      const SizedBox(width: 16),
+                      Text('Esperar (${_emailResendTimerSeconds}s)'),
+                    ],
+                  )
+                : const Text('Enviar Correo'),
+          ),
+          const SizedBox(height: 32),
 
-         // Send Email Button
-         ElevatedButton(
-           onPressed: _isSendingEmail ? null : _sendEmailOtp,
-           child: _isSendingEmail
-               ? Row(
-                   mainAxisSize: MainAxisSize.min,
-                   children: [
-                     const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                     const SizedBox(width: 16),
-                     Text('Esperar (${_emailResendTimerSeconds}s)'),
-                   ],
-                 )
-               : const Text('Enviar Correo'),
-         ),
-         const SizedBox(height: 32),
-
-         // --- OTP Input Section ---
-         const Text('Verifica tu Correo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          // --- OTP Input Section ---
+          const Text('Verifica tu Correo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           const Text('Ingrese el código de seguridad de 4 dígitos que acabamos de enviar a tu correo.'),
-           const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
           // Use flutter_otp_text_field (reusing the same logic)
           OtpTextField(
             numberOfFields: 4,
             borderColor: Theme.of(context).primaryColor,
-            // styles: [TextStyle(fontSize: 24)], // Optional: Apply specific style
             showFieldAsBox: true, // Use boxes
             fieldWidth: 50, // Adjust width as needed
-            //runs when every textfield is filled
             onSubmit: (String verificationCode){
                 _otpController.text = verificationCode; // Update the controller
-                // Optionally trigger verification immediately
-                // _verifyEmailOtp();
-            }, // end onSubmit
+            },
           ),
           const SizedBox(height: 24),
 
           // Verify Button
-         ElevatedButton(
-           // Enable only after Email has been sent and not currently verifying
-           onPressed: (_canResendEmail || _isSendingEmail || _isVerifyingEmailOtp) ? null : _verifyEmailOtp,
-           style: ElevatedButton.styleFrom(
+          ElevatedButton(
+            onPressed: (_canResendEmail || _isSendingEmail || _isVerifyingEmailOtp) ? null : _verifyEmailOtp,
+            style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
               textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-           child: _isVerifyingEmailOtp
-               ? const SizedBox(
-                   height: 24, width: 24,
-                   child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)
-                 )
-               : const Text('Verificar'),
-         ),
-       ],
-     );
+            child: _isVerifyingEmailOtp
+                ? const SizedBox(
+                    height: 24, width: 24,
+                    child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)
+                  )
+                : const Text('Verificar'),
+          ),
+          
+          // Opción para cambiar de método
+          const SizedBox(height: 24),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _selectedVerificationType = 'sms';
+                // Limpiar campos de email
+                _otpController.clear();
+              });
+            },
+            child: const Text('Cambiar a verificación por SMS'),
+          ),
+        ],
+      );
+    }
   }
 
 }

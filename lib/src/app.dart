@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uywapets_flutter/src/shared/routing/app_router.dart';
-import 'package:uywapets_flutter/src/core/services/permission_service.dart'; // Importar el servicio de permisos
+import 'package:uywapets_flutter/src/core/services/permission_service.dart';
+import 'package:uywapets_flutter/src/theme/app_theme.dart'; // Importamos el tema personalizado
 
 // Change MyApp to a ConsumerWidget to access providers
 class MyApp extends ConsumerStatefulWidget { // Cambiado a ConsumerStatefulWidget para usar initState
@@ -45,10 +46,7 @@ class _MyAppState extends ConsumerState<MyApp> {
     // MaterialApp.router now uses the router configuration from the provider
     return MaterialApp.router(
       title: 'UywaPets Flutter',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme, // Aplicamos nuestro tema personalizado
       // Provide the router configuration obtained from the provider
       routerConfig: goRouter,
     );
